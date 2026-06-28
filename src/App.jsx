@@ -233,6 +233,12 @@ const KO_TIMES={
   SF:['2026-07-14T19:00:00Z','2026-07-15T19:00:00Z'],
   '3RD':'2026-07-18T19:00:00Z',F:'2026-07-19T19:00:00Z'
 };
+const dateRange=(times)=>{
+  if(!times||!times.length)return'';
+  const ds=times.map(t=>fmtKO(t)).filter(Boolean);
+  const uniq=[...new Set(ds)];
+  return uniq.length<=1?(uniq[0]||''):`${uniq[0]}–${uniq[uniq.length-1]}`;
+};
 
 function koWinner(m){if(!m||m.status!=='finished')return null;return m.hs>m.as?m.home:(m.as>m.hs?m.away:null);}
 function koLoser(m){if(!m||m.status!=='finished')return null;return m.hs<m.as?m.home:(m.as<m.hs?m.away:null);}
@@ -296,38 +302,38 @@ function Bracket({onMatch}){
   if(lL&&lR)thirdCell={match:findByTeams(lL,lR),parts:{a:{kind:'team',code:lL},b:{kind:'team',code:lR}}};
 
   const hasKO=ko.length>0;
-  const Col=({title,date,cells,times})=>(<div className="flex flex-col flex-shrink-0" style={{width:138}}><div className="text-center mb-2"><div className="font-bold text-xs sm:text-sm" style={{color:'#ffffff'}}>{title}</div><div className="text-[10px]" style={{color:'rgba(255,255,255,0.6)'}}>{date}</div></div><div className="flex flex-col justify-around flex-1 gap-1.5">{cells.map((c,i)=><KOCell key={i} cell={c} onMatch={onMatch} time={times?times[i]:null}/>)}</div></div>);
+  const Col=({title,cells,times})=>(<div className="flex flex-col flex-shrink-0" style={{width:138}}><div className="text-center mb-2"><div className="font-bold text-xs sm:text-sm" style={{color:'#ffffff'}}>{title}</div><div className="text-[10px]" style={{color:'rgba(255,255,255,0.6)'}}>{dateRange(times)}</div></div><div className="flex flex-col justify-around flex-1 gap-1.5">{cells.map((c,i)=><KOCell key={i} cell={c} onMatch={onMatch} time={times?times[i]:null}/>)}</div></div>);
 
-  return (<div className="relative rounded-3xl overflow-hidden shadow-xl" style={{background:'linear-gradient(135deg,#0f2a5c 0%,#1e3a8a 45%,#0c2347 100%)'}}>
-    <div className="absolute inset-0 opacity-10" style={{backgroundImage:'radial-gradient(circle at 20% 20%, #fff 1px, transparent 1px), radial-gradient(circle at 70% 60%, #fff 1px, transparent 1px)',backgroundSize:'40px 40px'}}></div>
-    <div className="absolute top-0 right-0 w-72 h-72 rounded-full blur-3xl" style={{background:'rgba(252,211,77,0.18)'}}></div>
-    <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl" style={{background:'rgba(56,189,248,0.18)'}}></div>
-    <div className="relative p-5">
-      <div className="flex items-center gap-2 mb-1" style={{color:'#ffffff'}}><Trophy className="w-5 h-5" style={{color:'#fcd34d'}}/><h3 className="font-extrabold text-lg">32 強淘汰賽對陣表</h3></div>
-      <p className="text-xs mb-1" style={{color:'rgba(255,255,255,0.8)'}}>對陣依官方賽程排定。每場分出勝負後，下一輪會自動顯示晉級者；再下一輪則先以「○ 或 ○ 勝方」標示，更遠輪次顯示待定。</p>
-      {!hasKO&&<p className="text-xs mb-3" style={{color:'#fde68a'}}>淘汰賽尚未開打，現顯示固定對陣與預定賽期。</p>}
-      <div className="overflow-x-auto pb-2 pt-2">
-        <div className="flex gap-2 items-stretch min-w-max" style={{minHeight:440}}>
-          <Col title="32強" date="6/28–7/3" cells={r32L} times={KO_TIMES.R32.slice(0,8)}/>
-          <Col title="16強" date="7/4–7" cells={r16L} times={KO_TIMES.R16.slice(0,4)}/>
-          <Col title="半準決賽" date="7/9–11" cells={qfL} times={KO_TIMES.QF.slice(0,2)}/>
-          <Col title="準決賽" date="7/14" cells={[sfL[0]]} times={[KO_TIMES.SF[0]]}/>
-          <div className="flex flex-col items-center justify-center flex-shrink-0 px-1" style={{width:166}}>
-            <Trophy className="w-12 h-12 mb-1 drop-shadow" style={{color:'#fcd34d'}}/>
-            <div className="font-extrabold text-sm" style={{color:'#fcd34d'}}>決賽</div>
-            <div className="text-[10px] mb-2" style={{color:'rgba(255,255,255,0.6)'}}>7/19</div>
-            <div className="w-full"><KOCell cell={finCell} onMatch={onMatch} gold time={KO_TIMES.F}/></div>
-            <div className="mt-5 font-semibold text-[11px] mb-1" style={{color:'rgba(255,255,255,0.7)'}}>季軍戰 · 7/18</div>
-            <div className="w-full"><KOCell cell={thirdCell} onMatch={onMatch} time={KO_TIMES['3RD']}/></div>
-          </div>
-          <Col title="準決賽" date="7/15" cells={[sfR[0]]} times={[KO_TIMES.SF[1]]}/>
-          <Col title="半準決賽" date="7/9–11" cells={qfR} times={KO_TIMES.QF.slice(2,4)}/>
-          <Col title="16強" date="7/4–7" cells={r16R} times={KO_TIMES.R16.slice(4,8)}/>
-          <Col title="32強" date="6/28–7/3" cells={r32R} times={KO_TIMES.R32.slice(8,16)}/>
+return (<div className="relative rounded-3xl overflow-hidden shadow-xl" style={{background:'linear-gradient(135deg,#0f2a5c 0%,#1e3a8a 45%,#0c2347 100%)'}}>
+  <div className="absolute inset-0 opacity-10" style={{backgroundImage:'radial-gradient(circle at 20% 20%, #fff 1px, transparent 1px), radial-gradient(circle at 70% 60%, #fff 1px, transparent 1px)',backgroundSize:'40px 40px'}}></div>
+  <div className="absolute top-0 right-0 w-72 h-72 rounded-full blur-3xl" style={{background:'rgba(252,211,77,0.18)'}}></div>
+  <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl" style={{background:'rgba(56,189,248,0.18)'}}></div>
+  <div className="relative p-5">
+    <div className="flex items-center gap-2 mb-1" style={{color:'#ffffff'}}><Trophy className="w-5 h-5" style={{color:'#fcd34d'}}/><h3 className="font-extrabold text-lg">32 強淘汰賽對陣表</h3></div>
+    <p className="text-xs mb-1" style={{color:'rgba(255,255,255,0.8)'}}>對陣依官方賽程排定。每場分出勝負後，下一輪會自動顯示晉級者；再下一輪則先以「○ 或 ○ 勝方」標示，更遠輪次顯示待定。日期時間均為香港時間（GMT+8）。</p>
+    {!hasKO&&<p className="text-xs mb-3" style={{color:'#fde68a'}}>淘汰賽尚未開打，現顯示固定對陣與預定賽期。</p>}
+    <div className="overflow-x-auto pb-2 pt-2">
+      <div className="flex gap-2 items-stretch min-w-max" style={{minHeight:440}}>
+        <Col title="32強" cells={r32L} times={KO_TIMES.R32.slice(0,8)}/>
+        <Col title="16強" cells={r16L} times={KO_TIMES.R16.slice(0,4)}/>
+        <Col title="半準決賽" cells={qfL} times={KO_TIMES.QF.slice(0,2)}/>
+        <Col title="準決賽" cells={[sfL[0]]} times={[KO_TIMES.SF[0]]}/>
+        <div className="flex flex-col items-center justify-center flex-shrink-0 px-1" style={{width:166}}>
+          <Trophy className="w-12 h-12 mb-1 drop-shadow" style={{color:'#fcd34d'}}/>
+          <div className="font-extrabold text-sm" style={{color:'#fcd34d'}}>決賽</div>
+          <div className="text-[10px] mb-2" style={{color:'rgba(255,255,255,0.6)'}}>{fmtKO(KO_TIMES.F)}</div>
+          <div className="w-full"><KOCell cell={finCell} onMatch={onMatch} gold time={KO_TIMES.F}/></div>
+          <div className="mt-5 font-semibold text-[11px] mb-1" style={{color:'rgba(255,255,255,0.7)'}}>季軍戰 · {fmtKO(KO_TIMES['3RD'])}</div>
+          <div className="w-full"><KOCell cell={thirdCell} onMatch={onMatch} time={KO_TIMES['3RD']}/></div>
         </div>
+        <Col title="準決賽" cells={[sfR[0]]} times={[KO_TIMES.SF[1]]}/>
+        <Col title="半準決賽" cells={qfR} times={KO_TIMES.QF.slice(2,4)}/>
+        <Col title="16強" cells={r16R} times={KO_TIMES.R16.slice(4,8)}/>
+        <Col title="32強" cells={r32R} times={KO_TIMES.R32.slice(8,16)}/>
       </div>
     </div>
-  </div>);
+  </div>
+</div>);
 }
 function DayChips({days,value,onChange,todayHasNone}){const tk=todayKey();return (<div className="flex gap-2 overflow-x-auto pb-3"><button onClick={()=>onChange('today')} className={`px-3.5 py-1.5 rounded-full text-sm whitespace-nowrap transition ${value==='today'?'bg-emerald-600 text-white shadow':'bg-white border border-slate-200 text-slate-600'}`}>今天{todayHasNone?'·順延':''}</button><button onClick={()=>onChange('all')} className={`px-3.5 py-1.5 rounded-full text-sm whitespace-nowrap transition ${value==='all'?'bg-emerald-600 text-white shadow':'bg-white border border-slate-200 text-slate-600'}`}>全部</button>{days.filter(d=>d!==tk).map(d=>(<button key={d} onClick={()=>onChange(d)} className={`px-3.5 py-1.5 rounded-full text-sm whitespace-nowrap transition ${value===d?'bg-emerald-600 text-white shadow':'bg-white border border-slate-200 text-slate-600'}`}>{dayLabel(d)}</button>))}</div>);}
 
