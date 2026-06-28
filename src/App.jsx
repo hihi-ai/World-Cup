@@ -24,6 +24,7 @@ const SEED={
 const groupOrder=['A','B','C','D','E','F','G','H','I','J','K','L'];
 const groupTeams={}; Object.keys(SEED).forEach(c=>{const g=SEED[c].group;(groupTeams[g]=groupTeams[g]||[]).push(c);});
 let teams={}; Object.keys(SEED).forEach(c=>{const m=CN_BY_ABBR[c]||[c,null];teams[c]={name:m[0],iso:m[1],group:SEED[c].group,logo:null,en:null,id:null};});
+[['RSA','南非','za'],['BIH','波赫','ba'],['COD','民主剛果','cd'],['CPV','維德角','cv']].forEach(([c,n,iso])=>{if(!teams[c])teams[c]={name:n,iso,group:'—',logo:null,en:null,id:null};});
 const groupOf=(code)=>(teams[code]&&teams[code].group)||'—';
 const tname=(code)=>(teams[code]&&teams[code].name)||code;
 
@@ -209,26 +210,63 @@ function TeamPage({code,onMatch,onPlayer}){const d=getDetails(code);const tm=mat
   </div>);}
 
 /* ============================================================ 淘汰賽對陣表（依官方對陣結構 · 32強連線式） ============================================================ */
-const leftR32=[{a:'A組首名',b:'最佳第三名'},{a:'E組次名',b:'G組次名'},{a:'C組首名',b:'最佳第三名'},{a:'F組次名',b:'H組次名'},{a:'I組首名',b:'最佳第三名'},{a:'B組次名',b:'D組次名'},{a:'K組首名',b:'最佳第三名'},{a:'E組首名',b:'A組次名'}];
-const rightR32=[{a:'B組首名',b:'最佳第三名'},{a:'F組首名',b:'C組次名'},{a:'D組首名',b:'最佳第三名'},{a:'G組首名',b:'最佳第三名'},{a:'L組首名',b:'最佳第三名'},{a:'H組首名',b:'J組次名'},{a:'J組首名',b:'L組次名'},{a:'K組次名',b:'I組次名'}];
+/* ============================================================ 淘汰賽對陣表（依官方 32 強對陣 · Yahoo 運動） ============================================================ */
+const leftR32=[
+  {a:'GER',b:'PAR'},{a:'FRA',b:'SWE'},{a:'RSA',b:'CAN'},{a:'NED',b:'MAR'},
+  {a:'POR',b:'CRO'},{a:'ESP',b:'AUT'},{a:'USA',b:'BIH'},{a:'BEL',b:'SEN'}
+];
+const rightR32=[
+  {a:'BRA',b:'JPN'},{a:'CIV',b:'NOR'},{a:'MEX',b:'ECU'},{a:'ENG',b:'COD'},
+  {a:'ARG',b:'CPV'},{a:'AUS',b:'EGY'},{a:'SUI',b:'ALG'},{a:'COL',b:'GHA'}
+];
 
-function resolveSlotTeam(label){const m=String(label).match(/^([A-L])組(首名|次名)$/);if(!m)return null;const rows=computeStandings(m[1]);const idx=m[2]==='首名'?0:1;return rows[idx]?rows[idx].code:null;}
+/* 淘汰賽預定賽期（UTC；顯示時自動轉香港時間）。可自行調整為精確開賽時間 */
+const KO_TIMES={
+  R32:[
+    '2026-06-28T18:00:00Z','2026-06-28T21:00:00Z','2026-06-29T18:00:00Z','2026-06-29T21:00:00Z',
+    '2026-06-30T18:00:00Z','2026-06-30T21:00:00Z','2026-07-01T18:00:00Z','2026-07-01T21:00:00Z',
+    '2026-07-02T18:00:00Z','2026-07-02T21:00:00Z','2026-07-03T18:00:00Z','2026-07-03T21:00:00Z',
+    '2026-06-29T00:00:00Z','2026-06-30T00:00:00Z','2026-07-02T00:00:00Z','2026-07-03T00:00:00Z'
+  ],
+  R16:[
+    '2026-07-04T18:00:00Z','2026-07-04T21:00:00Z','2026-07-05T18:00:00Z','2026-07-05T21:00:00Z',
+    '2026-07-06T18:00:00Z','2026-07-06T21:00:00Z','2026-07-07T18:00:00Z','2026-07-07T21:00:00Z'
+  ],
+  QF:['2026-07-09T18:00:00Z','2026-07-09T21:00:00Z','2026-07-10T18:00:00Z','2026-07-11T21:00:00Z'],
+  SF:['2026-07-14T19:00:00Z','2026-07-15T19:00:00Z'],
+  '3RD':'2026-07-18T19:00:00Z',
+  F:'2026-07-19T19:00:00Z'
+};
+
 function koWinner(m){if(!m||m.status!=='finished')return null;return m.hs>m.as?m.home:(m.as>m.hs?m.away:null);}
-function nextRoundPlace(prev,roundMatches){const used=new Set();const out=[];for(let j=0;j<prev.length/2;j++){const anchors=[koWinner(prev[2*j]),koWinner(prev[2*j+1])].filter(Boolean);let found=null;if(anchors.length)found=roundMatches.find(mm=>!used.has(mm.id)&&anchors.some(c=>mm.home===c||mm.away===c));if(found)used.add(found.id);out.push(found||null);}return out;}
+function findMatchForPair(pair,pool,used){const f=pool.find(mm=>!used.has(mm.id)&&(mm.home===pair.a||mm.away===pair.a||mm.home===pair.b||mm.away===pair.b));if(f)used.add(f.id);return f||null;}
+function nextRoundPlace(prev,roundMatches){const used=new Set();const out=[];const n=Math.floor(prev.length/2);for(let j=0;j<n;j++){const anchors=[koWinner(prev[2*j]),koWinner(prev[2*j+1])].filter(Boolean);let found=null;if(anchors.length)found=roundMatches.find(mm=>!used.has(mm.id)&&anchors.some(c=>mm.home===c||mm.away===c));if(found)used.add(found.id);out.push(found||null);}const leftover=roundMatches.filter(mm=>!used.has(mm.id));let li=0;for(let k=0;k<out.length&&li<leftover.length;k++){if(!out[k]){out[k]=leftover[li++];used.add(out[k].id);}}return out;}
 const fmtKO=(iso)=>{try{return new Intl.DateTimeFormat('zh-HK',{timeZone:HK_TZ,month:'numeric',day:'numeric'}).format(new Date(iso));}catch(e){return'';}};
 
 function KORow({code,score,win,show}){const known=teams[code]&&(teams[code].iso||teams[code].logo);return (<div className="flex items-center justify-between gap-1 py-0.5"><span className="flex items-center gap-1 min-w-0"><Flag code={code} cls="w-4 h-3 shrink-0"/><span className={`truncate text-[11px] ${win?'font-extrabold text-slate-900':'text-slate-600'}`}>{known?tname(code):'待定'}</span></span>{show&&<span className={`text-[11px] font-bold tabular-nums shrink-0 ${win?'text-emerald-600':'text-slate-400'}`}>{score}</span>}</div>);}
 
-function KOCell({m,onMatch,gold,slot}){
+function KOCell({m,onMatch,gold,slot,pair,time}){
+  const timeStr=time?`${fmtKO(time)} ${fmtTime(time)}`:'';
   if(!m){
+    if(pair){
+      return (<div className={`rounded-lg border ${gold?'border-amber-400':'border-white/60'} bg-white shadow px-2 py-1.5`}>
+        {timeStr&&<div className="text-[9px] text-center text-slate-500 mb-0.5 font-medium">{timeStr}</div>}
+        <div className="flex items-center gap-1 py-0.5"><Flag code={pair.a} cls="w-4 h-3 shrink-0"/><span className="truncate text-[11px] text-slate-700 font-medium">{tname(pair.a)}</span></div>
+        <div className="flex items-center gap-1 py-0.5"><Flag code={pair.b} cls="w-4 h-3 shrink-0"/><span className="truncate text-[11px] text-slate-700 font-medium">{tname(pair.b)}</span></div>
+      </div>);
+    }
     if(slot){
       return (<div className="rounded-lg border-2 border-dashed px-2 py-1.5" style={{borderColor:gold?'rgba(252,211,77,0.8)':'rgba(125,211,252,0.7)',background:gold?'rgba(120,53,15,0.45)':'rgba(15,23,42,0.55)'}}>
+        {timeStr&&<div className="text-[9px] text-center mb-0.5 font-medium" style={{color:'rgba(255,255,255,0.7)'}}>{timeStr}</div>}
         <div className="text-[10px] font-semibold truncate leading-tight" style={{color:'#e0f2fe'}}>{slot.a}</div>
         <div className="text-[9px] text-center leading-none my-0.5" style={{color:'rgba(255,255,255,0.5)'}}>─ 對 ─</div>
         <div className="text-[10px] font-semibold truncate leading-tight" style={{color:'#fde68a'}}>{slot.b}</div>
       </div>);
     }
-    return <div className="rounded-lg border-2 border-dashed px-2 py-2.5 text-[10px] text-center font-semibold" style={{borderColor:gold?'rgba(252,211,77,0.8)':'rgba(125,211,252,0.6)',background:'rgba(15,23,42,0.55)',color:'#e0f2fe'}}>晉級者待定</div>;
+    return (<div className="rounded-lg border-2 border-dashed px-2 py-2 text-center" style={{borderColor:gold?'rgba(252,211,77,0.8)':'rgba(125,211,252,0.6)',background:'rgba(15,23,42,0.55)'}}>
+      {timeStr&&<div className="text-[9px] mb-0.5 font-medium" style={{color:'rgba(255,255,255,0.7)'}}>{timeStr}</div>}
+      <div className="text-[10px] font-semibold" style={{color:'#e0f2fe'}}>晉級者待定</div>
+    </div>);
   }
   const live=m.status==='live',done=m.status==='finished',show=live||done;const wH=done&&m.hs>m.as,wA=done&&m.as>m.hs;
   return (<button onClick={()=>onMatch(m)} className={`w-full rounded-lg border ${gold?'border-amber-400 ring-2 ring-amber-300':'border-white'} bg-white shadow-md hover:bg-slate-50 px-2 py-1.5 text-left transition`}>
@@ -246,46 +284,50 @@ function Bracket({onMatch}){
   ko.forEach(m=>{const r=koRound(m);if(byRound[r])byRound[r].push(m);});
   Object.keys(byRound).forEach(k=>byRound[k].sort((a,b)=>new Date(a.datetime)-new Date(b.datetime)));
   const slots=[...leftR32,...rightR32];const used=new Set();
-  const r32=slots.map(s=>{const anchors=[resolveSlotTeam(s.a),resolveSlotTeam(s.b)].filter(Boolean);let f=null;if(anchors.length)f=byRound.R32.find(mm=>!used.has(mm.id)&&anchors.some(c=>mm.home===c||mm.away===c));if(f)used.add(f.id);return f||null;});
+  let r32=slots.map(s=>findMatchForPair(s,byRound.R32,used));
+  const r32left=byRound.R32.filter(mm=>!used.has(mm.id));
+  if(r32left.length){let li=0;r32=r32.map(c=>{if(c)return c;if(li<r32left.length){const x=r32left[li++];used.add(x.id);return x;}return null;});}
   const r16=nextRoundPlace(r32,byRound.R16);
   const qf=nextRoundPlace(r16,byRound.QF);
   const sf=nextRoundPlace(qf,byRound.SF);
   const fin=nextRoundPlace(sf,byRound.F);
   const third=byRound['3RD'][0]||null;
   const hasKO=ko.length>0;
-  const Col=({title,date,cells,slots:cslots})=>(<div className="flex flex-col flex-shrink-0" style={{width:138}}><div className="text-center mb-2"><div className="font-bold text-xs sm:text-sm" style={{color:'#ffffff'}}>{title}</div><div className="text-[10px]" style={{color:'rgba(255,255,255,0.6)'}}>{date}</div></div><div className="flex flex-col justify-around flex-1 gap-1.5">{cells.map((m,i)=><KOCell key={i} m={m} onMatch={onMatch} slot={cslots?cslots[i]:null}/>)}</div></div>);
+  const r16Slots=Array.from({length:8},()=>({a:'32強勝方',b:'32強勝方'}));
+  const qfSlots=Array.from({length:4},()=>({a:'16強勝方',b:'16強勝方'}));
+  const sfSlots=[{a:'半準決賽勝方',b:'半準決賽勝方'},{a:'半準決賽勝方',b:'半準決賽勝方'}];
+  const Col=({title,date,cells,slots:cslots,pairs,times})=>(<div className="flex flex-col flex-shrink-0" style={{width:138}}><div className="text-center mb-2"><div className="font-bold text-xs sm:text-sm" style={{color:'#ffffff'}}>{title}</div><div className="text-[10px]" style={{color:'rgba(255,255,255,0.6)'}}>{date}</div></div><div className="flex flex-col justify-around flex-1 gap-1.5">{cells.map((m,i)=><KOCell key={i} m={m} onMatch={onMatch} slot={cslots?cslots[i]:null} pair={pairs?pairs[i]:null} time={times?times[i]:null}/>)}</div></div>);
   return (<div className="relative rounded-3xl overflow-hidden shadow-xl" style={{background:'linear-gradient(135deg,#0f2a5c 0%,#1e3a8a 45%,#0c2347 100%)'}}>
     <div className="absolute inset-0 opacity-10" style={{backgroundImage:'radial-gradient(circle at 20% 20%, #fff 1px, transparent 1px), radial-gradient(circle at 70% 60%, #fff 1px, transparent 1px)',backgroundSize:'40px 40px'}}></div>
     <div className="absolute top-0 right-0 w-72 h-72 rounded-full blur-3xl" style={{background:'rgba(252,211,77,0.18)'}}></div>
     <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full blur-3xl" style={{background:'rgba(56,189,248,0.18)'}}></div>
     <div className="relative p-5">
-      <div className="flex items-center gap-2 mb-1" style={{color:'#ffffff'}}><Trophy className="w-5 h-5" style={{color:'#fcd34d'}}/><h3 className="font-extrabold text-lg">淘汰賽對陣表</h3></div>
-      <p className="text-xs mb-1" style={{color:'rgba(255,255,255,0.8)'}}>各組前二 + 8 支最佳第三名 = 32 隊。藍框＝分組名次、琥珀＝最佳第三名；點任何一場已定對決即可查看時間、陣容與即時數據。</p>
-      {!hasKO&&<p className="text-xs mb-3" style={{color:'#fde68a'}}>小組賽尚未結束，對陣格顯示晉級來源；淘汰賽場次公佈後會自動填入對戰與比分。</p>}
+      <div className="flex items-center gap-2 mb-1" style={{color:'#ffffff'}}><Trophy className="w-5 h-5" style={{color:'#fcd34d'}}/><h3 className="font-extrabold text-lg">32 強淘汰賽對陣表</h3></div>
+      <p className="text-xs mb-1" style={{color:'rgba(255,255,255,0.8)'}}>對陣依官方賽程排定，每格顯示香港時間賽期。小組賽完成後比分會自動填入；點任何一場已開賽的對決可查看陣容與即時數據。</p>
+      {!hasKO&&<p className="text-xs mb-3" style={{color:'#fde68a'}}>淘汰賽尚未開打，現顯示固定對陣與預定賽期；場次公佈後會自動補上比分與晉級者。</p>}
       <div className="overflow-x-auto pb-2 pt-2">
         <div className="flex gap-2 items-stretch min-w-max" style={{minHeight:440}}>
-          <Col title="32強" date="6/28–7/3" cells={r32.slice(0,8)} slots={leftR32}/>
-          <Col title="16強" date="7/4–7" cells={r16.slice(0,4)}/>
-          <Col title="半準決賽" date="7/9–11" cells={qf.slice(0,2)}/>
-          <Col title="準決賽" date="7/14" cells={[sf[0]]}/>
+          <Col title="32強" date="6/28–7/3" cells={r32.slice(0,8)} pairs={leftR32} times={KO_TIMES.R32.slice(0,8)}/>
+          <Col title="16強" date="7/4–7" cells={r16.slice(0,4)} slots={r16Slots.slice(0,4)} times={KO_TIMES.R16.slice(0,4)}/>
+          <Col title="半準決賽" date="7/9–11" cells={qf.slice(0,2)} slots={qfSlots.slice(0,2)} times={KO_TIMES.QF.slice(0,2)}/>
+          <Col title="準決賽" date="7/14" cells={[sf[0]]} slots={[sfSlots[0]]} times={[KO_TIMES.SF[0]]}/>
           <div className="flex flex-col items-center justify-center flex-shrink-0 px-1" style={{width:166}}>
             <Trophy className="w-12 h-12 mb-1 drop-shadow" style={{color:'#fcd34d'}}/>
             <div className="font-extrabold text-sm" style={{color:'#fcd34d'}}>決賽</div>
             <div className="text-[10px] mb-2" style={{color:'rgba(255,255,255,0.6)'}}>7/19</div>
-            <div className="w-full"><KOCell m={fin[0]} onMatch={onMatch} gold slot={{a:'準決賽 勝方',b:'準決賽 勝方'}}/></div>
+            <div className="w-full"><KOCell m={fin[0]} onMatch={onMatch} gold slot={{a:'準決賽勝方',b:'準決賽勝方'}} time={KO_TIMES.F}/></div>
             <div className="mt-5 font-semibold text-[11px] mb-1" style={{color:'rgba(255,255,255,0.7)'}}>季軍戰 · 7/18</div>
-            <div className="w-full"><KOCell m={third} onMatch={onMatch} slot={{a:'準決賽 敗方',b:'準決賽 敗方'}}/></div>
+            <div className="w-full"><KOCell m={third} onMatch={onMatch} slot={{a:'準決賽敗方',b:'準決賽敗方'}} time={KO_TIMES['3RD']}/></div>
           </div>
-          <Col title="準決賽" date="7/15" cells={[sf[1]]}/>
-          <Col title="半準決賽" date="7/9–11" cells={qf.slice(2,4)}/>
-          <Col title="16強" date="7/4–7" cells={r16.slice(4,8)}/>
-          <Col title="32強" date="6/28–7/3" cells={r32.slice(8,16)} slots={rightR32}/>
+          <Col title="準決賽" date="7/15" cells={[sf[1]]} slots={[sfSlots[1]]} times={[KO_TIMES.SF[1]]}/>
+          <Col title="半準決賽" date="7/9–11" cells={qf.slice(2,4)} slots={qfSlots.slice(2,4)} times={KO_TIMES.QF.slice(2,4)}/>
+          <Col title="16強" date="7/4–7" cells={r16.slice(4,8)} slots={r16Slots.slice(4,8)} times={KO_TIMES.R16.slice(4,8)}/>
+          <Col title="32強" date="6/28–7/3" cells={r32.slice(8,16)} pairs={rightR32} times={KO_TIMES.R32.slice(8,16)}/>
         </div>
       </div>
     </div>
   </div>);
 }
-
 function DayChips({days,value,onChange,todayHasNone}){const tk=todayKey();return (<div className="flex gap-2 overflow-x-auto pb-3"><button onClick={()=>onChange('today')} className={`px-3.5 py-1.5 rounded-full text-sm whitespace-nowrap transition ${value==='today'?'bg-emerald-600 text-white shadow':'bg-white border border-slate-200 text-slate-600'}`}>今天{todayHasNone?'·順延':''}</button><button onClick={()=>onChange('all')} className={`px-3.5 py-1.5 rounded-full text-sm whitespace-nowrap transition ${value==='all'?'bg-emerald-600 text-white shadow':'bg-white border border-slate-200 text-slate-600'}`}>全部</button>{days.filter(d=>d!==tk).map(d=>(<button key={d} onClick={()=>onChange(d)} className={`px-3.5 py-1.5 rounded-full text-sm whitespace-nowrap transition ${value===d?'bg-emerald-600 text-white shadow':'bg-white border border-slate-200 text-slate-600'}`}>{dayLabel(d)}</button>))}</div>);}
 
 export default function WorldCupHub(){
